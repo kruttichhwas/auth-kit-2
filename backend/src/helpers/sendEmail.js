@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const sendEmail = async (subject, send_to, reply_to, template, send_from, name, verificationLink)=> {
+const sendEmail = async (subject, send_to, reply_to, template, send_from, name, link)=> {
     const transporter = nodeMailer.createTransport({
         host: process.env.EMAIL_HOST,
         port: process.env.EMAIL_PORT,
@@ -37,7 +37,7 @@ const sendEmail = async (subject, send_to, reply_to, template, send_from, name, 
         template: template,
         context: {
             name: name,
-            link: verificationLink
+            link: link
         }
     };
     try {
@@ -49,4 +49,4 @@ const sendEmail = async (subject, send_to, reply_to, template, send_from, name, 
     }
 };
 
-export default sendEmail
+export default sendEmail;

@@ -1,7 +1,7 @@
 import asyncHandler from "express-async-handler"
 import jwt from "jsonwebtoken"
-import User from "../../models/auth/user_model.js";
-export const protect = asyncHandler(async (req, res, next) => {
+import User from "../../models/auth/userModel.js";
+export const checkUser = asyncHandler(async (req, res, next) => {
     try {
         const token = req.cookies.token;
         if (!token) {

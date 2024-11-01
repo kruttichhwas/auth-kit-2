@@ -1,9 +1,9 @@
 import asyncHandler from "express-async-handler";
-import User from "../../models/auth/user_model.js";
-import generateToken from "../../helpers/generate_token.js";
+import User from "../../models/auth/userModel.js";
+import generateToken from "../../helpers/generateToken.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken"
-import Token from "../../models/auth/token_model.js";
+import Token from "../../models/auth/tokenModel.js";
 import crypto from "node:crypto"
 import { hashToken } from "../../helpers/hashToken.js";
 import sendEmail from "../../helpers/sendEmail.js";
@@ -17,7 +17,6 @@ export const registerUser = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "password must be atleast 6 characters long" })
     }
     const userExists = await User.findOne({ email })
-    // console.log(userExists)
     if (userExists) {
         return res.status(400).json({ message: "user already exists" });
     }
@@ -25,7 +24,6 @@ export const registerUser = asyncHandler(async (req, res) => {
         name, email, password
     });
     const token = generateToken(user._id);
-    // console.log(token)
     res.cookie("token", token, {
         path: "/",
         httpOnly: true,
@@ -146,6 +144,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
         return res.status(500).json({ message: "email could not be sent" });
     }
 });
+
 export const verifyUser = asyncHandler(async (req, res) => {
     const { verificationToken } = req.params;
     if (!verificationToken) {
@@ -153,15 +152,73 @@ export const verifyUser = asyncHandler(async (req, res) => {
     }
     const hashifiedtoken = hashToken(verificationToken);
     const userToken = await Token.findOne({ verificationToken: hashifiedtoken, expiresAt: { $gt: Date.now() } }).select("userId");
-    // console.log(token.userId.toString());
-    if(!userToken){
-        return res.status(400).json({message: "token expired"});
+    if (!userToken) {
+        return res.status(400).json({ message: "token expired" });
     }
     const user = await User.findById(userToken.userId).select("-password");
     if (user) {
         user.isVerified = true;
-        const verifiedUser = await user.save();
-        res.status(200).json({message: "user verification done"});
+        await user.save();
+        res.status(200).json({ message: "user verification done" });
+    } else {
+        res.status(404).json({ message: "user not found" })
+    }
+});
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ message: "email is required" });
+    }
+    const user = await User.findOne({ email: email }).select("-password");
+    if (!user) {
+        return res.status.json({ message: "user not found" });
+    }
+    const token = await Token.findOne({ userId: user._id });
+    if (token) {
+        await token.deleteOne();
+    }
+    const hashifiedUserID = hashToken(user._id)
+    const passwordResetToken = crypto.randomBytes(64).toString("hex") + hashifiedUserID;
+    const hashifiedtoken = hashToken(passwordResetToken);
+    await new Token({
+        userId: user._id,
+        passwordResetToken: hashifiedtoken,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + 30 * 60 * 1000  //30 minutes
+    }).save();
+    const subject = "Password Reset - TeamAuth";
+    const send_to = user.email;
+    const reply_to = process.env.TEAM_AUTH_EMAIL;
+    const template = "passwordReset";
+    const send_from = process.env.TEAM_AUTH_EMAIL;
+    const name = user.name;
+    const passwordResetLink = `${process.env.CLIENT_URI}/reset-password/${passwordResetToken}`;
+    try {
+        await sendEmail(subject, send_to, reply_to, template, send_from, name, passwordResetLink);
+        return res.status(200).json({ message: "email sent, reset password within 30 minutes" });
+    } catch (error) {
+        console.log("error sending mail", error);
+        return res.status(500).json({ message: "email could not be sent" });
+    }
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+    const { passwordResetToken } = req.params;
+    const { newPassword } = req.body;
+    if (!passwordResetToken) {
+        return res.status(400).json({ message: "invalid password reset token" });
+    }
+    const hashifiedtoken = hashToken(passwordResetToken);
+    const userToken = await Token.findOne({ passwordResetToken: hashifiedtoken, expiresAt: { $gt: Date.now() } }).select("userId");
+    if (!userToken) {
+        return res.status(400).json({ message: "token expired" });
+    }
+    const user = await User.findById(userToken.userId).select("-password");
+    if (user) {
+        user.password = newPassword;
+        await user.save();
+        res.status(200).json({ message: "password reset done" });
     } else {
         res.status(404).json({ message: "user not found" })
     }
