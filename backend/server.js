@@ -15,12 +15,11 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-app.use(express.urlencoded({ extented: true }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const routeFiles = fs.readdirSync("./src/routes");
-console.log(routeFiles)
-
+// console.log(userRouteFiles)
 routeFiles.forEach((file) => {
     import(`./src/routes/${file}`).then((route)=>{
         app.use("/api/v1", route.default);

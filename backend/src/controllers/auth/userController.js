@@ -4,7 +4,7 @@ import generateToken from "../../helpers/generate_token.js";
 import bcrypt from "bcrypt";
 
 export const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password, deleteUser } = req.body;
+    const { name, email, password } = req.body;
     if (!name || !email || !password) {
         return res.status(400).json({ message: "all fields are required" });
     }
@@ -13,12 +13,6 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
     const userExists = await User.findOne({ email })
     // console.log(userExists)
-    if (userExists && deleteUser) {
-        const deleteUser = await User.deleteOne({ email })
-        if (deleteUser) {
-            return res.status(400).json({ message: "user deleted" });
-        }
-    }
     if (userExists) {
         return res.status(400).json({ message: "user already exists" });
     }
