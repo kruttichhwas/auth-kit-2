@@ -223,3 +223,21 @@ export const resetPassword = asyncHandler(async (req, res) => {
         res.status(404).json({ message: "user not found" })
     }
 });
+
+export const changePassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "all fields are required" });
+    }
+    const userExists = await User.findById(req.user._id)
+    if (!userExists) {
+        return res.status(400).json({ message: "some error occured, please try again later" });
+    }
+    const isMatch = await bcrypt.compare(currentPassword, userExists.password);
+    if (!isMatch) {
+        return res.status(400).json({ message: "invalid current password" });
+    }
+    userExists.password = newPassword;
+    await userExists.save();
+    return res.status(200).json({message: "password changed successfully"});
+})
