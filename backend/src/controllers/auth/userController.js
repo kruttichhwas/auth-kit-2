@@ -237,7 +237,11 @@ export const changePassword = asyncHandler(async (req, res) => {
     if (!isMatch) {
         return res.status(400).json({ message: "invalid current password" });
     }
-    userExists.password = newPassword;
-    await userExists.save();
-    return res.status(200).json({message: "password changed successfully"});
+    if (isMatch){
+        userExists.password = newPassword;
+        await userExists.save();
+        return res.status(200).json({message: "password changed successfully"}); 
+    } else {
+        return res.status(400).json({message: "password couldn't be changed"}); 
+    }
 })
